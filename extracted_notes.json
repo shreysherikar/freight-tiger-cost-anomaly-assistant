@@ -1,0 +1,122 @@
+[
+  {
+    "note_id": "N001",
+    "is_valid": true,
+    "agreement_with_rules": true,
+    "disagreement_details": null,
+    "applies_to": "Chennai-Bangalore",
+    "start_date": "2025-02-24",
+    "end_date": "2025-03-08",
+    "cost_effect": "increase",
+    "magnitude_range": "unspecified",
+    "evidence_quote": "forcing longer detours and higher trip costs"
+  },
+  {
+    "note_id": "N002",
+    "is_valid": true,
+    "agreement_with_rules": true,
+    "disagreement_details": null,
+    "applies_to": "Ahmedabad-Mumbai",
+    "start_date": "2025-01-20",
+    "end_date": null,
+    "cost_effect": "increase",
+    "magnitude_range": "unspecified",
+    "evidence_quote": "temporary surcharge applied"
+  },
+  {
+    "note_id": "N003",
+    "is_valid": true,
+    "agreement_with_rules": true,
+    "disagreement_details": null,
+    "applies_to": "All Routes",
+    "start_date": "2025-05-05",
+    "end_date": null,
+    "cost_effect": "increase",
+    "magnitude_range": "5-7%",
+    "evidence_quote": "pushing up transportation costs across all routes by roughly 5-7%"
+  },
+  {
+    "note_id": "N004",
+    "is_valid": true,
+    "agreement_with_rules": true,
+    "disagreement_details": null,
+    "applies_to": "All Routes",
+    "start_date": "2024-03-11",
+    "end_date": null,
+    "cost_effect": "no_change",
+    "magnitude_range": "none",
+    "evidence_quote": "the affected routes are not part of this dataset"
+  },
+  {
+    "note_id": "N005",
+    "is_valid": true,
+    "agreement_with_rules": true,
+    "disagreement_details": null,
+    "applies_to": "Mumbai-Delhi",
+    "start_date": "2024-07-29",
+    "end_date": "2024-08-05",
+    "cost_effect": "no_change",
+    "magnitude_range": "none",
+    "evidence_quote": "costs were not significantly affected"
+  },
+  {
+    "note_id": "N006",
+    "is_valid": true,
+    "agreement_with_rules": true,
+    "disagreement_details": null,
+    "applies_to": "All Routes",
+    "start_date": "2025-09-22",
+    "end_date": null,
+    "cost_effect": "no_change",
+    "magnitude_range": "none",
+    "evidence_quote": "overall demand for freight capacity remained stable this quarter with no major disruptions reported"
+  },
+  {
+    "note_id": "N007",
+    "is_valid": true,
+    "agreement_with_rules": true,
+    "disagreement_details": null,
+    "applies_to": "Delhi-Jaipur",
+    "start_date": "2024-05-20",
+    "end_date": null,
+    "cost_effect": "unclear",
+    "magnitude_range": "unspecified",
+    "evidence_quote": "Local authorities announced improved road conditions on the Delhi-Jaipur stretch after resurfacing work was completed."
+  },
+  {
+    "note_id": "N008",
+    "is_valid": true,
+    "agreement_with_rules": true,
+    "disagreement_details": null,
+    "applies_to": "Kolkata-Bhubaneswar",
+    "start_date": "2025-06-09",
+    "end_date": null,
+    "cost_effect": "no_change",
+    "magnitude_range": "none",
+    "evidence_quote": "freight movement remained normal"
+  },
+  {
+    "note_id": "N009",
+    "is_valid": true,
+    "agreement_with_rules": true,
+    "disagreement_details": null,
+    "applies_to": "Chennai-Bangalore",
+    "start_date": "2025-03-17",
+    "end_date": null,
+    "cost_effect": "no_change",
+    "magnitude_range": "none",
+    "evidence_quote": "returned to normal conditions"
+  },
+  {
+    "note_id": "N010",
+    "is_valid": true,
+    "agreement_with_rules": true,
+    "disagreement_details": null,
+    "applies_to": "All Routes",
+    "start_date": "2025-10-27",
+    "end_date": null,
+    "cost_effect": "no_change",
+    "magnitude_range": "none",
+    "evidence_quote": "compliance costs were absorbed by transporters without a rate change"
+  }
+]

@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Freight Tiger — Shipping Cost Anomaly Detection Report</title>
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --primary: #0284c7;
+            --success: #10b981;
+            --danger: #ef4444;
+            --purple: #8b5cf6;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            line-height: 1.5;
+            padding: 24px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: white;
+            padding: 32px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .header h1 { font-size: 26px; font-weight: 800; margin-bottom: 8px; letter-spacing: -0.5px; }
+        .header p { color: #94a3b8; font-size: 14px; max-width: 800px; }
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+        .kpi-card {
+            background: var(--surface);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .kpi-label { font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; }
+        .kpi-val { font-size: 28px; font-weight: 800; margin-top: 4px; color: var(--text-main); }
+        .kpi-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+        
+        .legend-box {
+            background: var(--surface);
+            padding: 16px 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            margin-bottom: 24px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 20px;
+            font-size: 13px;
+        }
+        .legend-item { display: flex; align-items: center; gap: 8px; }
+        .legend-line { width: 24px; height: 3px; border-radius: 2px; }
+        .legend-circle { width: 12px; height: 12px; border-radius: 50%; }
+        .legend-rect { width: 16px; height: 12px; border-radius: 2px; border: 1px dashed rgba(59, 130, 246, 0.5); background: rgba(59, 130, 246, 0.15); }
+
+        .chart-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .route-title { font-size: 18px; font-weight: 700; color: var(--text-main); display: inline-block; }
+        .route-type-badge {
+            font-size: 11px;
+            font-weight: 600;
+            background: #f1f5f9;
+            color: #475569;
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin-left: 8px;
+        }
+        .chart-container { width: 100%; overflow-x: auto; }
+        .route-chart { width: 100%; height: auto; display: block; }
+
+        .badge {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 9999px;
+            letter-spacing: 0.3px;
+        }
+        .badge-justified { background: #dcfce7; color: #166534; }
+        .badge-unjustified { background: #fee2e2; color: #991b1b; }
+
+        .table-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-top: 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .table-section h2 { font-size: 20px; font-weight: 800; margin-bottom: 16px; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            text-align: left;
+        }
+        th {
+            background: #f8fafc;
+            padding: 12px 14px;
+            font-weight: 700;
+            color: #475569;
+            border-bottom: 2px solid var(--border);
+        }
+        td {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+        tr:hover td { background: #f8fafc; }
+        code {
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 12px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Freight Tiger — Cost Anomaly & Disruption Audit Report</h1>
+            <p>Automated corridor-level anomaly detection, rolling baseline modeling, and deterministic context-note justification audit for freight shipping operations.</p>
+        </header>
+
+        <section class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">Total Route-Weeks</div>
+                <div class="kpi-val">721</div>
+                <div class="kpi-sub">7 corridors across 2024–2025</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Anomalies Flagged</div>
+                <div class="kpi-val">38</div>
+                <div class="kpi-sub">5.3% flag rate</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Justified by Notes</div>
+                <div class="kpi-val" style="color: #10b981;">8</div>
+                <div class="kpi-sub">Verified against context notes</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Unexplained Spikes</div>
+                <div class="kpi-val" style="color: #ef4444;">30</div>
+                <div class="kpi-sub">Actionable for operational review</div>
+            </div>
+        </section>
+
+        <div class="legend-box">
+            <strong style="color: #334155;">Legend:</strong>
+            <div class="legend-item">
+                <div class="legend-line" style="background: #0284c7;"></div>
+                <span>Weekly Unit Cost (₹/tonne-km)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-line" style="background: #64748b; border-top: 2px dashed #64748b; height: 0;"></div>
+                <span>Trailing 8-Week Own Baseline</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-line" style="background: #8b5cf6; border-top: 2px dotted #8b5cf6; height: 0;"></div>
+                <span>Peer Baseline (Same Haul Type)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-circle" style="background: #10b981;"></div>
+                <span>Justified Spike (Cited Note)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-circle" style="background: #ef4444;"></div>
+                <span>Unexplained Anomaly (Flagged Yes)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-rect"></div>
+                <span>Note Disruption Window (Shaded)</span>
+            </div>
+        </div>
+
+        <section class="charts-section">
+            
+        <div class="chart-card">
+            <div class="card-header">
+                <div>
+                    <h3 class="route-title">Ahmedabad-Mumbai</h3>
+                    <span class="route-type-badge">Corridor Haul</span>
+                </div>
+                <div class="route-badges">
+                    <span class="badge badge-unjustified">2 Unexplained</span>
+                    <span class="badge badge-justified">1 Justified</span>
+                </div>
+            </div>
+            <div class="chart-container">
+                <svg viewBox='0 0 950 340' class='route-chart' xmlns='http://www.w3.org/2000/svg'>
+<rect x='65' y='30' width='845' height='260' fill='#ffffff' stroke='#e2e8f0' stroke-width='1'/>
+<rect x='508.3' y='30' width='12.0' height='260' fill='rgba(59, 130, 246, 0.12)' stroke='rgba(59, 130, 246, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N002: A regional festival week saw a temporary surcharge applied by transporters on the Ahmedabad-Mumbai corridor due to high demand and limited truck availability. (2025-01-20 to 2025-01-26)</title></rect>
+<text x='512.3' y='44' font-size='10' font-weight='600' fill='#475569'>N002</text>
+<rect x='632.5' y='30' width='16.5' height='260' fill='rgba(59, 130, 246, 0.12)' stroke='rgba(59, 130, 246, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N003: Diesel prices rose nationwide starting this week, pushing up transportation costs across all routes by roughly 5-7%. (2025-05-05 to 2025-05-18)</title></rect>
+<text x='636.5' y='44' font-size='10' font-weight='600' fill='#475569'>N003</text>
+<rect x='135.5' y='30' width='12.0' height='260' fill='rgba(148, 163, 184, 0.12)' stroke='rgba(148, 163, 184, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N004: A new toll plaza was commissioned on a national highway stretch, but the affected routes are not part of this dataset. (2024-03-11 to 2024-03-17)</title></rect>
+<text x='139.5' y='44' font-size='10' font-weight='600' fill='#475569'>N004</text>
+<rect x='798.2' y='30' width='12.0' height='260' fill='rgba(148, 163, 184, 0.12)' stroke='rgba(148, 163, 184, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N006: A logistics industry report noted overall demand for freight capacity remained stable this quarter with no major disruptions reported. (2025-09-22 to 2025-09-28)</title></rect>
+<text x='802.2' y='44' font-size='10' font-weight='600' fill='#475569'>N006</text>
+<rect x='839.6' y='30' width='12.0' height='260' fill='rgba(148, 163, 184, 0.12)' stroke='rgba(148, 163, 184, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N010: A new vehicle tracking mandate was introduced for commercial fleets; compliance costs were absorbed by transporters without a rate change. (2025-10-27 to 2025-11-02)</title></rect>
+<text x='843.6' y='44' font-size='10' font-weight='600' fill='#475569'>N010</text>
+<line x1='65' y1='290.0' x2='910' y2='290.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='294.0' text-anchor='end' font-size='11' fill='#64748b'>₹2.15</text>
+<line x1='65' y1='225.0' x2='910' y2='225.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='229.0' text-anchor='end' font-size='11' fill='#64748b'>₹2.53</text>
+<line x1='65' y1='160.0' x2='910' y2='160.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='164.0' text-anchor='end' font-size='11' fill='#64748b'>₹2.92</text>
+<line x1='65' y1='95.0' x2='910' y2='95.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='99.0' text-anchor='end' font-size='11' fill='#64748b'>₹3.30</text>
+<line x1='65' y1='30.0' x2='910' y2='30.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='34.0' text-anchor='end' font-size='11' fill='#64748b'>₹3.68</text>
+<line x1='65.0' y1='290' x2='65.0' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='65.0' y='308' text-anchor='middle' font-size='10' fill='#64748b'>01-08</text>
+<text x='65.0' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2024</text>
+<line x1='172.7' y1='290' x2='172.7' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='172.7' y='308' text-anchor='middle' font-size='10' fill='#64748b'>04-08</text>
+<text x='172.7' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2024</text>
+<line x1='280.4' y1='290' x2='280.4' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='280.4' y='308' text-anchor='middle' font-size='10' fill='#64748b'>07-08</text>
+<text x='280.4' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2024</text>
+<line x1='388.1' y1='290' x2='388.1' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='388.1' y='308' text-anchor='middle' font-size='10' fill='#64748b'>10-07</text>
+<text x='388.1' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2024</text>
+<line x1='495.8' y1='290' x2='495.8' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='495.8' y='308' text-anchor='middle' font-size='10' fill='#64748b'>01-06</text>
+<text x='495.8' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2025</text>
+<line x1='603.5' y1='290' x2='603.5' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='603.5' y='308' text-anchor='middle' font-size='10' fill='#64748b'>04-07</text>
+<text x='603.5' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2025</text>
+<line x1='711.2' y1='290' x2='711.2' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='711.2' y='308' text-anchor='middle' font-size='10' fill='#64748b'>07-07</text>
+<text x='711.2' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2025</text>
+<line x1='818.9' y1='290' x2='818.9' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='818.9' y='308' text-anchor='middle' font-size='10' fill='#64748b'>10-06</text>
+<text x='818.9' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2025</text>
+<polyline points='65.0,218.5 73.3,218.5 81.6,201.6 89.9,232.0 98.1,223.6 106.4,233.7 114.7,233.7 123.0,218.5 131.3,227.0 139.6,210.1 147.8,225.3 156.1,205.0 164.4,220.2 172.7,215.1 181.0,237.1 189.3,199.9 197.5,227.0 205.8,213.4 214.1,205.0 222.4,216.8 230.7,232.0 239.0,233.7 247.3,240.5 255.5,228.7 263.8,210.1 272.1,210.1 280.4,215.1 288.7,220.2 297.0,227.0 305.2,240.5 313.5,228.7 321.8,240.5 330.1,203.3 338.4,216.8 346.7,228.7 355.0,228.7 363.2,215.1 371.5,233.7 379.8,232.0 388.1,232.0 396.4,235.4 404.7,220.2 412.9,201.6 421.2,227.0 429.5,216.8 437.8,215.1 446.1,213.4 454.4,230.3 462.6,232.0 470.9,238.8 479.2,208.4 487.5,221.9 495.8,228.7 504.1,213.4 512.4,96.8 520.6,237.1 528.9,232.0 537.2,240.5 545.5,228.7 553.8,230.3 562.1,215.1 570.3,206.7 578.6,203.3 586.9,240.5 595.2,211.7 603.5,232.0 611.8,238.8 620.0,215.1 628.3,205.0 636.6,215.1 644.9,211.7 653.2,208.4 661.5,210.1 669.8,206.7 678.0,188.1 686.3,177.9 694.6,179.6 702.9,194.8 711.2,198.2 719.5,198.2 727.7,179.6 736.0,199.9 744.3,201.6 752.6,208.4 760.9,211.7 769.2,210.1 777.5,194.8 785.7,208.4 794.0,179.6 802.3,206.7 810.6,196.5 818.9,188.1 827.2,193.1 835.4,189.8 843.7,201.6 852.0,189.8 860.3,211.7 868.6,188.1 876.9,211.7 885.1,181.3 893.4,179.6 901.7,191.5 910.0,189.8' fill='none' stroke='#0284c7' stroke-width='2.2'/>
+<circle cx='412.9' cy='201.6' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2024-10-28
+Cost: ₹2.67/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +6.4% vs this route's past average
+vs Peer: +4.3% vs similar-length routes this week
+No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</title></circle>
+<circle cx='412.9' cy='201.6' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<circle cx='512.4' cy='96.8' r='6' fill='#10b981' stroke='#ffffff' stroke-width='2'><title>Week: 2025-01-20
+Cost: ₹3.29/tonne-km
+Verdict: Justified (Note N002)
+Matches note N002 dated 2025-01-20: A regional festival week saw a temporary surcharge applied by transporters on the Ahmedabad-Mumbai corridor due to high demand and limited truck availability. The cost rise has a clear explanation.</title></circle>
+<text x='512.4' y='87.8' text-anchor='middle' font-size='9' font-weight='700' fill='#059669'>N002</text>
+<circle cx='686.3' cy='177.9' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2025-06-16
+Cost: ₹2.81/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +6.7% vs this route's past average
+vs Peer: +0.1% vs similar-length routes this week
+No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</title></circle>
+<circle cx='686.3' cy='177.9' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<text x='65' y='20' font-size='14' font-weight='700' fill='#0f172a'>Ahmedabad-Mumbai <tspan font-size='11' font-weight='500' fill='#64748b'>(Corridor Haul)</tspan></text>
+</svg>
+            </div>
+        </div>
+        
+        <div class="chart-card">
+            <div class="card-header">
+                <div>
+                    <h3 class="route-title">Chennai-Bangalore</h3>
+                    <span class="route-type-badge">Corridor Haul</span>
+                </div>
+                <div class="route-badges">
+                    <span class="badge badge-unjustified">2 Unexplained</span>
+                    <span class="badge badge-justified">2 Justified</span>
+                </div>
+            </div>
+            <div class="chart-container">
+                <svg viewBox='0 0 950 340' class='route-chart' xmlns='http://www.w3.org/2000/svg'>
+<rect x='65' y='30' width='845' height='260' fill='#ffffff' stroke='#e2e8f0' stroke-width='1'/>
+<rect x='549.7' y='30' width='16.5' height='260' fill='rgba(59, 130, 246, 0.12)' stroke='rgba(59, 130, 246, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N001: Heavy flooding on the Chennai-Bangalore highway disrupted normal truck movement from Feb 24 to Mar 8, forcing longer detours and higher trip costs. Roads were passable again by Mar 9. (2025-02-24 to 2025-03-08)</title></rect>
+<text x='553.7' y='44' font-size='10' font-weight='600' fill='#475569'>N001</text>
+<rect x='632.5' y='30' width='16.5' height='260' fill='rgba(59, 130, 246, 0.12)' stroke='rgba(59, 130, 246, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N003: Diesel prices rose nationwide starting this week, pushing up transportation costs across all routes by roughly 5-7%. (2025-05-05 to 2025-05-18)</title></rect>
+<text x='636.5' y='44' font-size='10' font-weight='600' fill='#475569'>N003</text>
+<rect x='135.5' y='30' width='12.0' height='260' fill='rgba(148, 163, 184, 0.12)' stroke='rgba(148, 163, 184, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N004: A new toll plaza was commissioned on a national highway stretch, but the affected routes are not part of this dataset. (2024-03-11 to 2024-03-17)</title></rect>
+<text x='139.5' y='44' font-size='10' font-weight='600' fill='#475569'>N004</text>
+<rect x='798.2' y='30' width='12.0' height='260' fill='rgba(148, 163, 184, 0.12)' stroke='rgba(148, 163, 184, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N006: A logistics industry report noted overall demand for freight capacity remained stable this quarter with no major disruptions reported. (2025-09-22 to 2025-09-28)</title></rect>
+<text x='802.2' y='44' font-size='10' font-weight='600' fill='#475569'>N006</text>
+<rect x='574.5' y='30' width='12.0' height='260' fill='rgba(148, 163, 184, 0.12)' stroke='rgba(148, 163, 184, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N009: Highway authorities confirmed the Chennai-Bangalore route returned to normal conditions after flood-related repairs were completed. (2025-03-17 to 2025-03-23)</title></rect>
+<text x='578.5' y='44' font-size='10' font-weight='600' fill='#475569'>N009</text>
+<rect x='839.6' y='30' width='12.0' height='260' fill='rgba(148, 163, 184, 0.12)' stroke='rgba(148, 163, 184, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N010: A new vehicle tracking mandate was introduced for commercial fleets; compliance costs were absorbed by transporters without a rate change. (2025-10-27 to 2025-11-02)</title></rect>
+<text x='843.6' y='44' font-size='10' font-weight='600' fill='#475569'>N010</text>
+<line x1='65' y1='290.0' x2='910' y2='290.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='294.0' text-anchor='end' font-size='11' fill='#64748b'>₹2.25</text>
+<line x1='65' y1='225.0' x2='910' y2='225.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='229.0' text-anchor='end' font-size='11' fill='#64748b'>₹2.69</text>
+<line x1='65' y1='160.0' x2='910' y2='160.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='164.0' text-anchor='end' font-size='11' fill='#64748b'>₹3.13</text>
+<line x1='65' y1='95.0' x2='910' y2='95.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='99.0' text-anchor='end' font-size='11' fill='#64748b'>₹3.57</text>
+<line x1='65' y1='30.0' x2='910' y2='30.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='34.0' text-anchor='end' font-size='11' fill='#64748b'>₹4.01</text>
+<line x1='65.0' y1='290' x2='65.0' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='65.0' y='308' text-anchor='middle' font-size='10' fill='#64748b'>01-08</text>
+<text x='65.0' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2024</text>
+<line x1='172.7' y1='290' x2='172.7' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='172.7' y='308' text-anchor='middle' font-size='10' fill='#64748b'>04-08</text>
+<text x='172.7' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2024</text>
+<line x1='280.4' y1='290' x2='280.4' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='280.4' y='308' text-anchor='middle' font-size='10' fill='#64748b'>07-08</text>
+<text x='280.4' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2024</text>
+<line x1='388.1' y1='290' x2='388.1' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='388.1' y='308' text-anchor='middle' font-size='10' fill='#64748b'>10-07</text>
+<text x='388.1' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2024</text>
+<line x1='495.8' y1='290' x2='495.8' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='495.8' y='308' text-anchor='middle' font-size='10' fill='#64748b'>01-06</text>
+<text x='495.8' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2025</text>
+<line x1='603.5' y1='290' x2='603.5' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='603.5' y='308' text-anchor='middle' font-size='10' fill='#64748b'>04-07</text>
+<text x='603.5' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2025</text>
+<line x1='711.2' y1='290' x2='711.2' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='711.2' y='308' text-anchor='middle' font-size='10' fill='#64748b'>07-07</text>
+<text x='711.2' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2025</text>
+<line x1='818.9' y1='290' x2='818.9' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='818.9' y='308' text-anchor='middle' font-size='10' fill='#64748b'>10-06</text>
+<text x='818.9' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2025</text>
+<polyline points='65.0,213.5 73.3,228.3 81.6,212.0 89.9,225.3 98.1,225.3 106.4,213.5 114.7,223.8 123.0,235.7 131.3,232.7 139.6,213.5 147.8,240.1 156.1,219.4 164.4,222.3 172.7,214.9 181.0,226.8 189.3,240.1 197.5,219.4 205.8,244.5 214.1,214.9 222.4,228.3 230.7,219.4 239.0,214.9 247.3,238.6 255.5,207.5 263.8,231.2 272.1,214.9 280.4,226.8 288.7,212.0 297.0,229.7 305.2,213.5 313.5,235.7 321.8,210.5 330.1,214.9 338.4,228.3 346.7,244.5 355.0,222.3 363.2,229.7 371.5,234.2 379.8,234.2 388.1,222.3 396.4,234.2 404.7,220.9 412.9,238.6 421.2,219.4 429.5,216.4 437.8,213.5 446.1,214.9 454.4,219.4 462.6,231.2 470.9,225.3 479.2,216.4 487.5,217.9 495.8,220.9 504.1,243.1 512.4,209.0 520.6,217.9 528.9,226.8 537.2,220.9 545.5,203.1 553.8,93.6 562.1,108.4 570.3,95.1 578.6,109.9 586.9,222.3 595.2,212.0 603.5,217.9 611.8,223.8 620.0,240.1 628.3,225.3 636.6,186.8 644.9,185.3 653.2,206.1 661.5,212.0 669.8,191.3 678.0,201.6 686.3,188.3 694.6,209.0 702.9,216.4 711.2,191.3 719.5,209.0 727.7,188.3 736.0,213.5 744.3,191.3 752.6,203.1 760.9,200.1 769.2,201.6 777.5,194.2 785.7,213.5 794.0,183.9 802.3,191.3 810.6,194.2 818.9,213.5 827.2,198.7 835.4,200.1 843.7,207.5 852.0,198.7 860.3,194.2 868.6,207.5 876.9,195.7 885.1,197.2 893.4,195.7 901.7,188.3 910.0,206.1' fill='none' stroke='#0284c7' stroke-width='2.2'/>
+<circle cx='553.8' cy='93.6' r='6' fill='#10b981' stroke='#ffffff' stroke-width='2'><title>Week: 2025-02-24
+Cost: ₹3.58/tonne-km
+Verdict: Justified (Note N001)
+Matches note N001 dated 2025-02-24: Heavy flooding on the Chennai-Bangalore highway disrupted normal truck movement from Feb 24 to Mar 8, forcing longer detours and higher trip costs. Roads were passable again by Mar 9. The cost rise has a clear explanation.</title></circle>
+<text x='553.8' y='84.6' text-anchor='middle' font-size='9' font-weight='700' fill='#059669'>N001</text>
+<circle cx='562.1' cy='108.4' r='6' fill='#10b981' stroke='#ffffff' stroke-width='2'><title>Week: 2025-03-03
+Cost: ₹3.48/tonne-km
+Verdict: Justified (Note N001)
+Matches note N001 dated 2025-02-24: Heavy flooding on the Chennai-Bangalore highway disrupted normal truck movement from Feb 24 to Mar 8, forcing longer detours and higher trip costs. Roads were passable again by Mar 9. The cost rise has a clear explanation.</title></circle>
+<text x='562.1' y='99.4' text-anchor='middle' font-size='9' font-weight='700' fill='#059669'>N001</text>
+<circle cx='570.3' cy='95.1' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2025-03-10
+Cost: ₹3.57/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +22.1% vs this route's past average
+vs Peer: +33.8% vs similar-length routes this week
+Note N001's disruption window ended on Mar 8; week of 2025-03-10 is outside the covered window. Cost rise looks unexplained and worth a human review.</title></circle>
+<circle cx='570.3' cy='95.1' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<circle cx='578.6' cy='109.9' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2025-03-17
+Cost: ₹3.47/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +13.7% vs this route's past average
+vs Peer: +33.5% vs similar-length routes this week
+The closest note (N009, 2025-03-17) mentions route returned to normal conditions after repairs were completed -- it does not describe a reason for a cost rise on this route. No genuine justification found; flagged for review.</title></circle>
+<circle cx='578.6' cy='109.9' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<text x='65' y='20' font-size='14' font-weight='700' fill='#0f172a'>Chennai-Bangalore <tspan font-size='11' font-weight='500' fill='#64748b'>(Corridor Haul)</tspan></text>
+</svg>
+            </div>
+        </div>
+        
+        <div class="chart-card">
+            <div class="card-header">
+                <div>
+                    <h3 class="route-title">Delhi-Chennai</h3>
+                    <span class="route-type-badge">Corridor Haul</span>
+                </div>
+                <div class="route-badges">
+                    <span class="badge badge-unjustified">7 Unexplained</span>
+                    <span class="badge badge-justified">1 Justified</span>
+                </div>
+            </div>
+            <div class="chart-container">
+                <svg viewBox='0 0 950 340' class='route-chart' xmlns='http://www.w3.org/2000/svg'>
+<rect x='65' y='30' width='845' height='260' fill='#ffffff' stroke='#e2e8f0' stroke-width='1'/>
+<rect x='632.5' y='30' width='16.5' height='260' fill='rgba(59, 130, 246, 0.12)' stroke='rgba(59, 130, 246, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N003: Diesel prices rose nationwide starting this week, pushing up transportation costs across all routes by roughly 5-7%. (2025-05-05 to 2025-05-18)</title></rect>
+<text x='636.5' y='44' font-size='10' font-weight='600' fill='#475569'>N003</text>
+<rect x='135.5' y='30' width='12.0' height='260' fill='rgba(148, 163, 184, 0.12)' stroke='rgba(148, 163, 184, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N004: A new toll plaza was commissioned on a national highway stretch, but the affected routes are not part of this dataset. (2024-03-11 to 2024-03-17)</title></rect>
+<text x='139.5' y='44' font-size='10' font-weight='600' fill='#475569'>N004</text>
+<rect x='798.2' y='30' width='12.0' height='260' fill='rgba(148, 163, 184, 0.12)' stroke='rgba(148, 163, 184, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N006: A logistics industry report noted overall demand for freight capacity remained stable this quarter with no major disruptions reported. (2025-09-22 to 2025-09-28)</title></rect>
+<text x='802.2' y='44' font-size='10' font-weight='600' fill='#475569'>N006</text>
+<rect x='839.6' y='30' width='12.0' height='260' fill='rgba(148, 163, 184, 0.12)' stroke='rgba(148, 163, 184, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N010: A new vehicle tracking mandate was introduced for commercial fleets; compliance costs were absorbed by transporters without a rate change. (2025-10-27 to 2025-11-02)</title></rect>
+<text x='843.6' y='44' font-size='10' font-weight='600' fill='#475569'>N010</text>
+<line x1='65' y1='290.0' x2='910' y2='290.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='294.0' text-anchor='end' font-size='11' fill='#64748b'>₹1.72</text>
+<line x1='65' y1='225.0' x2='910' y2='225.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='229.0' text-anchor='end' font-size='11' fill='#64748b'>₹1.91</text>
+<line x1='65' y1='160.0' x2='910' y2='160.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='164.0' text-anchor='end' font-size='11' fill='#64748b'>₹2.10</text>
+<line x1='65' y1='95.0' x2='910' y2='95.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='99.0' text-anchor='end' font-size='11' fill='#64748b'>₹2.29</text>
+<line x1='65' y1='30.0' x2='910' y2='30.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='34.0' text-anchor='end' font-size='11' fill='#64748b'>₹2.49</text>
+<line x1='65.0' y1='290' x2='65.0' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='65.0' y='308' text-anchor='middle' font-size='10' fill='#64748b'>01-08</text>
+<text x='65.0' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2024</text>
+<line x1='172.7' y1='290' x2='172.7' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='172.7' y='308' text-anchor='middle' font-size='10' fill='#64748b'>04-08</text>
+<text x='172.7' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2024</text>
+<line x1='280.4' y1='290' x2='280.4' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='280.4' y='308' text-anchor='middle' font-size='10' fill='#64748b'>07-08</text>
+<text x='280.4' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2024</text>
+<line x1='388.1' y1='290' x2='388.1' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='388.1' y='308' text-anchor='middle' font-size='10' fill='#64748b'>10-07</text>
+<text x='388.1' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2024</text>
+<line x1='495.8' y1='290' x2='495.8' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='495.8' y='308' text-anchor='middle' font-size='10' fill='#64748b'>01-06</text>
+<text x='495.8' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2025</text>
+<line x1='603.5' y1='290' x2='603.5' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='603.5' y='308' text-anchor='middle' font-size='10' fill='#64748b'>04-07</text>
+<text x='603.5' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2025</text>
+<line x1='711.2' y1='290' x2='711.2' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='711.2' y='308' text-anchor='middle' font-size='10' fill='#64748b'>07-07</text>
+<text x='711.2' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2025</text>
+<line x1='818.9' y1='290' x2='818.9' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='818.9' y='308' text-anchor='middle' font-size='10' fill='#64748b'>10-06</text>
+<text x='818.9' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2025</text>
+<polyline points='65.0,160.4 73.3,143.5 81.6,184.0 89.9,194.2 98.1,119.9 106.4,180.7 114.7,150.3 123.0,157.0 131.3,177.3 139.6,187.4 147.8,123.3 156.1,177.3 164.4,180.7 172.7,133.4 181.0,130.0 189.3,180.7 197.5,180.7 205.8,180.7 214.1,143.5 222.4,130.0 230.7,163.8 239.0,133.4 247.3,133.4 255.5,130.0 263.8,167.2 272.1,153.7 280.4,150.3 288.7,146.9 297.0,211.0 305.2,197.5 313.5,194.2 321.8,160.4 330.1,170.5 338.4,153.7 346.7,157.0 355.0,153.7 363.2,143.5 371.5,153.7 379.8,170.5 388.1,197.5 396.4,130.0 404.7,133.4 412.9,180.7 421.2,146.9 429.5,180.7 437.8,197.5 446.1,197.5 454.4,204.3 462.6,136.8 470.9,180.7 479.2,163.8 487.5,136.8 495.8,187.4 504.1,194.2 512.4,207.7 520.6,133.4 528.9,123.3 537.2,180.7 545.5,119.9 553.8,167.2 562.1,143.5 570.3,153.7 578.6,167.2 586.9,197.5 595.2,177.3 603.5,123.3 611.8,200.9 620.0,173.9 628.3,170.5 636.6,126.7 644.9,146.9 653.2,157.0 661.5,157.0 669.8,173.9 678.0,126.7 686.3,173.9 694.6,177.3 702.9,143.5 711.2,200.9 719.5,136.8 727.7,180.7 736.0,173.9 744.3,133.4 752.6,197.5 760.9,190.8 769.2,187.4 777.5,150.3 785.7,143.5 794.0,173.9 802.3,200.9 810.6,167.2 818.9,157.0 827.2,177.3 835.4,170.5 843.7,133.4 852.0,184.0 860.3,126.7 868.6,194.2 876.9,184.0 885.1,170.5 893.4,200.9 901.7,204.3 910.0,197.5' fill='none' stroke='#0284c7' stroke-width='2.2'/>
+<circle cx='65.0' cy='160.4' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2024-01-08
+Cost: ₹2.10/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +7.2% vs this route's past average
+vs Peer: -0.2% vs similar-length routes this week
+No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</title></circle>
+<circle cx='65.0' cy='160.4' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<circle cx='98.1' cy='119.9' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2024-02-05
+Cost: ₹2.22/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +8.5% vs this route's past average
+vs Peer: +7.8% vs similar-length routes this week
+No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</title></circle>
+<circle cx='98.1' cy='119.9' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<circle cx='147.8' cy='123.3' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2024-03-18
+Cost: ₹2.21/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +6.6% vs this route's past average
+vs Peer: +7.3% vs similar-length routes this week
+The closest note (N004, 2024-03-11) mentions that affected routes are not part of this dataset -- it does not describe a reason for a cost rise on this route. No genuine justification found; flagged for review.</title></circle>
+<circle cx='147.8' cy='123.3' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<circle cx='520.6' cy='133.4' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2025-01-27
+Cost: ₹2.18/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +6.3% vs this route's past average
+vs Peer: +10.0% vs similar-length routes this week
+No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</title></circle>
+<circle cx='520.6' cy='133.4' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<circle cx='528.9' cy='123.3' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2025-02-03
+Cost: ₹2.21/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +6.6% vs this route's past average
+vs Peer: +8.7% vs similar-length routes this week
+No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</title></circle>
+<circle cx='528.9' cy='123.3' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<circle cx='545.5' cy='119.9' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2025-02-17
+Cost: ₹2.22/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +6.5% vs this route's past average
+vs Peer: +11.9% vs similar-length routes this week
+No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</title></circle>
+<circle cx='545.5' cy='119.9' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<circle cx='636.6' cy='126.7' r='6' fill='#10b981' stroke='#ffffff' stroke-width='2'><title>Week: 2025-05-05
+Cost: ₹2.20/tonne-km
+Verdict: Justified (Note N003)
+Matches note N003 dated 2025-05-05: Diesel prices rose nationwide starting this week, pushing up transportation costs across all routes by roughly 5-7%. The cost rise has a clear explanation.</title></circle>
+<text x='636.6' y='117.7' text-anchor='middle' font-size='9' font-weight='700' fill='#059669'>N003</text>
+<circle cx='860.3' cy='126.7' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2025-11-10
+Cost: ₹2.20/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +6.1% vs this route's past average
+vs Peer: +3.9% vs similar-length routes this week
+The closest note (N010, 2025-10-27) mentions compliance costs were absorbed without a rate change -- it does not describe a reason for a cost rise on this route. No genuine justification found; flagged for review.</title></circle>
+<circle cx='860.3' cy='126.7' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<text x='65' y='20' font-size='14' font-weight='700' fill='#0f172a'>Delhi-Chennai <tspan font-size='11' font-weight='500' fill='#64748b'>(Corridor Haul)</tspan></text>
+</svg>
+            </div>
+        </div>
+        
+        <div class="chart-card">
+            <div class="card-header">
+                <div>
+                    <h3 class="route-title">Delhi-Jaipur</h3>
+                    <span class="route-type-badge">Corridor Haul</span>
+                </div>
+                <div class="route-badges">
+                    <span class="badge badge-unjustified">3 Unexplained</span>
+                    <span class="badge badge-justified">1 Justified</span>
+                </div>
+            </div>
+            <div class="chart-container">
+                <svg viewBox='0 0 950 340' class='route-chart' xmlns='http://www.w3.org/2000/svg'>
+<rect x='65' y='30' width='845' height='260' fill='#ffffff' stroke='#e2e8f0' stroke-width='1'/>
+<rect x='632.5' y='30' width='16.5' height='260' fill='rgba(59, 130, 246, 0.12)' stroke='rgba(59, 130, 246, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N003: Diesel prices rose nationwide starting this week, pushing up transportation costs across all routes by roughly 5-7%. (2025-05-05 to 2025-05-18)</title></rect>
+<text x='636.5' y='44' font-size='10' font-weight='600' fill='#475569'>N003</text>
+<rect x='135.5' y='30' width='12.0' height='260' fill='rgba(148, 163, 184, 0.12)' stroke='rgba(148, 163, 184, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N004: A new toll plaza was commissioned on a national highway stretch, but the affected routes are not part of this dataset. (2024-03-11 to 2024-03-17)</title></rect>
+<text x='139.5' y='44' font-size='10' font-weight='600' fill='#475569'>N004</text>
+<rect x='798.2' y='30' width='12.0' height='260' fill='rgba(148, 163, 184, 0.12)' stroke='rgba(148, 163, 184, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N006: A logistics industry report noted overall demand for freight capacity remained stable this quarter with no major disruptions reported. (2025-09-22 to 2025-09-28)</title></rect>
+<text x='802.2' y='44' font-size='10' font-weight='600' fill='#475569'>N006</text>
+<rect x='218.3' y='30' width='12.0' height='260' fill='rgba(148, 163, 184, 0.12)' stroke='rgba(148, 163, 184, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N007: Local authorities announced improved road conditions on the Delhi-Jaipur stretch after resurfacing work was completed. (2024-05-20 to 2024-05-26)</title></rect>
+<text x='222.3' y='44' font-size='10' font-weight='600' fill='#475569'>N007</text>
+<rect x='839.6' y='30' width='12.0' height='260' fill='rgba(148, 163, 184, 0.12)' stroke='rgba(148, 163, 184, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N010: A new vehicle tracking mandate was introduced for commercial fleets; compliance costs were absorbed by transporters without a rate change. (2025-10-27 to 2025-11-02)</title></rect>
+<text x='843.6' y='44' font-size='10' font-weight='600' fill='#475569'>N010</text>
+<line x1='65' y1='290.0' x2='910' y2='290.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='294.0' text-anchor='end' font-size='11' fill='#64748b'>₹2.63</text>
+<line x1='65' y1='225.0' x2='910' y2='225.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='229.0' text-anchor='end' font-size='11' fill='#64748b'>₹3.14</text>
+<line x1='65' y1='160.0' x2='910' y2='160.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='164.0' text-anchor='end' font-size='11' fill='#64748b'>₹3.65</text>
+<line x1='65' y1='95.0' x2='910' y2='95.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='99.0' text-anchor='end' font-size='11' fill='#64748b'>₹4.16</text>
+<line x1='65' y1='30.0' x2='910' y2='30.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='34.0' text-anchor='end' font-size='11' fill='#64748b'>₹4.67</text>
+<line x1='65.0' y1='290' x2='65.0' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='65.0' y='308' text-anchor='middle' font-size='10' fill='#64748b'>01-08</text>
+<text x='65.0' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2024</text>
+<line x1='172.7' y1='290' x2='172.7' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='172.7' y='308' text-anchor='middle' font-size='10' fill='#64748b'>04-08</text>
+<text x='172.7' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2024</text>
+<line x1='280.4' y1='290' x2='280.4' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='280.4' y='308' text-anchor='middle' font-size='10' fill='#64748b'>07-08</text>
+<text x='280.4' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2024</text>
+<line x1='388.1' y1='290' x2='388.1' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='388.1' y='308' text-anchor='middle' font-size='10' fill='#64748b'>10-07</text>
+<text x='388.1' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2024</text>
+<line x1='495.8' y1='290' x2='495.8' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='495.8' y='308' text-anchor='middle' font-size='10' fill='#64748b'>01-06</text>
+<text x='495.8' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2025</text>
+<line x1='603.5' y1='290' x2='603.5' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='603.5' y='308' text-anchor='middle' font-size='10' fill='#64748b'>04-07</text>
+<text x='603.5' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2025</text>
+<line x1='711.2' y1='290' x2='711.2' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='711.2' y='308' text-anchor='middle' font-size='10' fill='#64748b'>07-07</text>
+<text x='711.2' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2025</text>
+<line x1='818.9' y1='290' x2='818.9' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='818.9' y='308' text-anchor='middle' font-size='10' fill='#64748b'>10-06</text>
+<text x='818.9' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2025</text>
+<polyline points='65.0,236.6 73.3,240.4 81.6,244.3 89.9,218.8 98.1,240.4 106.4,229.0 114.7,244.3 123.0,230.2 131.3,243.0 139.6,229.0 147.8,232.8 156.1,221.3 164.4,244.3 172.7,226.4 181.0,217.5 189.3,235.3 197.5,234.1 205.8,230.2 214.1,235.3 222.4,236.6 230.7,229.0 239.0,225.1 247.3,239.2 255.5,221.3 263.8,230.2 272.1,218.8 280.4,227.7 288.7,231.5 297.0,226.4 305.2,223.9 313.5,235.3 321.8,243.0 330.1,232.8 338.4,229.0 346.7,232.8 355.0,221.3 363.2,222.6 371.5,223.9 379.8,240.4 388.1,231.5 396.4,231.5 404.7,232.8 412.9,239.2 421.2,241.7 429.5,93.8 437.8,104.0 446.1,235.3 454.4,236.6 462.6,214.9 470.9,232.8 479.2,229.0 487.5,214.9 495.8,221.3 504.1,236.6 512.4,235.3 520.6,225.1 528.9,240.4 537.2,244.3 545.5,230.2 553.8,232.8 562.1,214.9 570.3,220.0 578.6,232.8 586.9,225.1 595.2,235.3 603.5,218.8 611.8,243.0 620.0,234.1 628.3,239.2 636.6,202.2 644.9,220.0 653.2,202.2 661.5,207.3 669.8,225.1 678.0,207.3 686.3,206.0 694.6,227.7 702.9,199.6 711.2,213.7 719.5,193.3 727.7,216.2 736.0,199.6 744.3,199.6 752.6,195.8 760.9,207.3 769.2,213.7 777.5,185.6 785.7,211.1 794.0,214.9 802.3,216.2 810.6,186.9 818.9,216.2 827.2,204.7 835.4,207.3 843.7,220.0 852.0,194.5 860.3,208.6 868.6,207.3 876.9,194.5 885.1,217.5 893.4,218.8 901.7,212.4 910.0,213.7' fill='none' stroke='#0284c7' stroke-width='2.2'/>
+<circle cx='429.5' cy='93.8' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2024-11-11
+Cost: ₹4.17/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +35.5% vs this route's past average
+vs Peer: +21.0% vs similar-length routes this week
+No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</title></circle>
+<circle cx='429.5' cy='93.8' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<circle cx='437.8' cy='104.0' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2024-11-18
+Cost: ₹4.09/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +27.6% vs this route's past average
+vs Peer: +19.7% vs similar-length routes this week
+No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</title></circle>
+<circle cx='437.8' cy='104.0' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<circle cx='636.6' cy='202.2' r='6' fill='#10b981' stroke='#ffffff' stroke-width='2'><title>Week: 2025-05-05
+Cost: ₹3.32/tonne-km
+Verdict: Justified (Note N003)
+Matches note N003 dated 2025-05-05: Diesel prices rose nationwide starting this week, pushing up transportation costs across all routes by roughly 5-7%. The cost rise has a clear explanation. The observed +7.5% exceeds the stated range, so part of the rise remains unexplained.</title></circle>
+<text x='636.6' y='193.2' text-anchor='middle' font-size='9' font-weight='700' fill='#059669'>N003</text>
+<circle cx='653.2' cy='202.2' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2025-05-19
+Cost: ₹3.32/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +6.4% vs this route's past average
+vs Peer: -4.3% vs similar-length routes this week
+Note N003 (2025-05-05) falls just outside the assumed 2-week window; the week of 2025-05-19 is not covered. Cost rise looks unexplained and worth a human review.</title></circle>
+<circle cx='653.2' cy='202.2' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<text x='65' y='20' font-size='14' font-weight='700' fill='#0f172a'>Delhi-Jaipur <tspan font-size='11' font-weight='500' fill='#64748b'>(Corridor Haul)</tspan></text>
+</svg>
+            </div>
+        </div>
+        
+        <div class="chart-card">
+            <div class="card-header">
+                <div>
+                    <h3 class="route-title">Kolkata-Bhubaneswar</h3>
+                    <span class="route-type-badge">Corridor Haul</span>
+                </div>
+                <div class="route-badges">
+                    <span class="badge badge-unjustified">1 Unexplained</span>
+                    <span class="badge badge-justified">0 Justified</span>
+                </div>
+            </div>
+            <div class="chart-container">
+                <svg viewBox='0 0 950 340' class='route-chart' xmlns='http://www.w3.org/2000/svg'>
+<rect x='65' y='30' width='845' height='260' fill='#ffffff' stroke='#e2e8f0' stroke-width='1'/>
+<rect x='632.5' y='30' width='16.5' height='260' fill='rgba(59, 130, 246, 0.12)' stroke='rgba(59, 130, 246, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N003: Diesel prices rose nationwide starting this week, pushing up transportation costs across all routes by roughly 5-7%. (2025-05-05 to 2025-05-18)</title></rect>
+<text x='636.5' y='44' font-size='10' font-weight='600' fill='#475569'>N003</text>
+<rect x='135.5' y='30' width='12.0' height='260' fill='rgba(148, 163, 184, 0.12)' stroke='rgba(148, 163, 184, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N004: A new toll plaza was commissioned on a national highway stretch, but the affected routes are not part of this dataset. (2024-03-11 to 2024-03-17)</title></rect>
+<text x='139.5' y='44' font-size='10' font-weight='600' fill='#475569'>N004</text>
+<rect x='798.2' y='30' width='12.0' height='260' fill='rgba(148, 163, 184, 0.12)' stroke='rgba(148, 163, 184, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N006: A logistics industry report noted overall demand for freight capacity remained stable this quarter with no major disruptions reported. (2025-09-22 to 2025-09-28)</title></rect>
+<text x='802.2' y='44' font-size='10' font-weight='600' fill='#475569'>N006</text>
+<rect x='673.9' y='30' width='12.0' height='260' fill='rgba(148, 163, 184, 0.12)' stroke='rgba(148, 163, 184, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N008: No significant disruptions were reported on the Kolkata-Bhubaneswar corridor this quarter; freight movement remained normal. (2025-06-09 to 2025-06-15)</title></rect>
+<text x='677.9' y='44' font-size='10' font-weight='600' fill='#475569'>N008</text>
+<rect x='839.6' y='30' width='12.0' height='260' fill='rgba(148, 163, 184, 0.12)' stroke='rgba(148, 163, 184, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N010: A new vehicle tracking mandate was introduced for commercial fleets; compliance costs were absorbed by transporters without a rate change. (2025-10-27 to 2025-11-02)</title></rect>
+<text x='843.6' y='44' font-size='10' font-weight='600' fill='#475569'>N010</text>
+<line x1='65' y1='290.0' x2='910' y2='290.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='294.0' text-anchor='end' font-size='11' fill='#64748b'>₹2.18</text>
+<line x1='65' y1='225.0' x2='910' y2='225.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='229.0' text-anchor='end' font-size='11' fill='#64748b'>₹2.44</text>
+<line x1='65' y1='160.0' x2='910' y2='160.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='164.0' text-anchor='end' font-size='11' fill='#64748b'>₹2.70</text>
+<line x1='65' y1='95.0' x2='910' y2='95.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='99.0' text-anchor='end' font-size='11' fill='#64748b'>₹2.96</text>
+<line x1='65' y1='30.0' x2='910' y2='30.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='34.0' text-anchor='end' font-size='11' fill='#64748b'>₹3.23</text>
+<line x1='65.0' y1='290' x2='65.0' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='65.0' y='308' text-anchor='middle' font-size='10' fill='#64748b'>01-08</text>
+<text x='65.0' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2024</text>
+<line x1='172.7' y1='290' x2='172.7' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='172.7' y='308' text-anchor='middle' font-size='10' fill='#64748b'>04-08</text>
+<text x='172.7' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2024</text>
+<line x1='280.4' y1='290' x2='280.4' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='280.4' y='308' text-anchor='middle' font-size='10' fill='#64748b'>07-08</text>
+<text x='280.4' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2024</text>
+<line x1='388.1' y1='290' x2='388.1' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='388.1' y='308' text-anchor='middle' font-size='10' fill='#64748b'>10-07</text>
+<text x='388.1' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2024</text>
+<line x1='495.8' y1='290' x2='495.8' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='495.8' y='308' text-anchor='middle' font-size='10' fill='#64748b'>01-06</text>
+<text x='495.8' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2025</text>
+<line x1='603.5' y1='290' x2='603.5' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='603.5' y='308' text-anchor='middle' font-size='10' fill='#64748b'>04-07</text>
+<text x='603.5' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2025</text>
+<line x1='711.2' y1='290' x2='711.2' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='711.2' y='308' text-anchor='middle' font-size='10' fill='#64748b'>07-07</text>
+<text x='711.2' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2025</text>
+<line x1='818.9' y1='290' x2='818.9' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='818.9' y='308' text-anchor='middle' font-size='10' fill='#64748b'>10-06</text>
+<text x='818.9' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2025</text>
+<polyline points='65.0,178.4 73.3,208.4 81.6,193.4 89.9,180.9 98.1,171.0 106.4,161.0 114.7,163.5 123.0,173.5 131.3,208.4 139.6,168.5 147.8,163.5 156.1,168.5 164.4,205.9 172.7,198.4 181.0,180.9 189.3,200.9 197.5,200.9 205.8,171.0 214.1,198.4 222.4,153.5 230.7,185.9 239.0,185.9 247.3,215.8 255.5,190.9 263.8,161.0 272.1,203.4 280.4,178.4 288.7,166.0 297.0,173.5 305.2,188.4 313.5,166.0 321.8,195.9 330.1,178.4 338.4,205.9 346.7,198.4 355.0,190.9 363.2,163.5 371.5,156.0 379.8,161.0 388.1,161.0 396.4,180.9 404.7,168.5 412.9,203.4 421.2,195.9 429.5,183.4 437.8,198.4 446.1,168.5 454.4,195.9 462.6,208.4 470.9,188.4 479.2,161.0 487.5,178.4 495.8,208.4 504.1,173.5 512.4,193.4 520.6,193.4 528.9,200.9 537.2,178.4 545.5,173.5 553.8,171.0 562.1,166.0 570.3,161.0 578.6,200.9 586.9,183.4 595.2,173.5 603.5,190.9 611.8,193.4 620.0,185.9 628.3,190.9 636.6,153.5 644.9,178.4 653.2,143.6 661.5,126.1 669.8,161.0 678.0,166.0 686.3,166.0 694.6,153.5 702.9,146.0 711.2,123.6 719.5,156.0 727.7,153.5 736.0,156.0 744.3,166.0 752.6,146.0 760.9,123.6 769.2,128.6 777.5,173.5 785.7,148.5 794.0,138.6 802.3,166.0 810.6,126.1 818.9,116.1 827.2,166.0 835.4,163.5 843.7,148.5 852.0,131.1 860.3,153.5 868.6,148.5 876.9,156.0 885.1,158.5 893.4,131.1 901.7,153.5 910.0,126.1' fill='none' stroke='#0284c7' stroke-width='2.2'/>
+<circle cx='661.5' cy='126.1' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2025-05-26
+Cost: ₹2.84/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +7.5% vs this route's past average
+vs Peer: +5.0% vs similar-length routes this week
+The closest note (N008, 2025-06-09) mentions freight movement remained normal with no disruptions -- it does not describe a reason for a cost rise on this route. No genuine justification found; flagged for review.</title></circle>
+<circle cx='661.5' cy='126.1' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<text x='65' y='20' font-size='14' font-weight='700' fill='#0f172a'>Kolkata-Bhubaneswar <tspan font-size='11' font-weight='500' fill='#64748b'>(Corridor Haul)</tspan></text>
+</svg>
+            </div>
+        </div>
+        
+        <div class="chart-card">
+            <div class="card-header">
+                <div>
+                    <h3 class="route-title">Mumbai-Delhi</h3>
+                    <span class="route-type-badge">Corridor Haul</span>
+                </div>
+                <div class="route-badges">
+                    <span class="badge badge-unjustified">1 Unexplained</span>
+                    <span class="badge badge-justified">2 Justified</span>
+                </div>
+            </div>
+            <div class="chart-container">
+                <svg viewBox='0 0 950 340' class='route-chart' xmlns='http://www.w3.org/2000/svg'>
+<rect x='65' y='30' width='845' height='260' fill='#ffffff' stroke='#e2e8f0' stroke-width='1'/>
+<rect x='632.5' y='30' width='16.5' height='260' fill='rgba(59, 130, 246, 0.12)' stroke='rgba(59, 130, 246, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N003: Diesel prices rose nationwide starting this week, pushing up transportation costs across all routes by roughly 5-7%. (2025-05-05 to 2025-05-18)</title></rect>
+<text x='636.5' y='44' font-size='10' font-weight='600' fill='#475569'>N003</text>
+<rect x='135.5' y='30' width='12.0' height='260' fill='rgba(148, 163, 184, 0.12)' stroke='rgba(148, 163, 184, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N004: A new toll plaza was commissioned on a national highway stretch, but the affected routes are not part of this dataset. (2024-03-11 to 2024-03-17)</title></rect>
+<text x='139.5' y='44' font-size='10' font-weight='600' fill='#475569'>N004</text>
+<rect x='301.1' y='30' width='12.0' height='260' fill='rgba(148, 163, 184, 0.12)' stroke='rgba(148, 163, 184, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N005: Scheduled highway maintenance work between Mumbai and Delhi caused minor delays for about a week; costs were not significantly affected. (2024-07-29 to 2024-08-04)</title></rect>
+<text x='305.1' y='44' font-size='10' font-weight='600' fill='#475569'>N005</text>
+<rect x='798.2' y='30' width='12.0' height='260' fill='rgba(148, 163, 184, 0.12)' stroke='rgba(148, 163, 184, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N006: A logistics industry report noted overall demand for freight capacity remained stable this quarter with no major disruptions reported. (2025-09-22 to 2025-09-28)</title></rect>
+<text x='802.2' y='44' font-size='10' font-weight='600' fill='#475569'>N006</text>
+<rect x='839.6' y='30' width='12.0' height='260' fill='rgba(148, 163, 184, 0.12)' stroke='rgba(148, 163, 184, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N010: A new vehicle tracking mandate was introduced for commercial fleets; compliance costs were absorbed by transporters without a rate change. (2025-10-27 to 2025-11-02)</title></rect>
+<text x='843.6' y='44' font-size='10' font-weight='600' fill='#475569'>N010</text>
+<line x1='65' y1='290.0' x2='910' y2='290.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='294.0' text-anchor='end' font-size='11' fill='#64748b'>₹1.72</text>
+<line x1='65' y1='225.0' x2='910' y2='225.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='229.0' text-anchor='end' font-size='11' fill='#64748b'>₹1.93</text>
+<line x1='65' y1='160.0' x2='910' y2='160.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='164.0' text-anchor='end' font-size='11' fill='#64748b'>₹2.13</text>
+<line x1='65' y1='95.0' x2='910' y2='95.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='99.0' text-anchor='end' font-size='11' fill='#64748b'>₹2.34</text>
+<line x1='65' y1='30.0' x2='910' y2='30.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='34.0' text-anchor='end' font-size='11' fill='#64748b'>₹2.55</text>
+<line x1='65.0' y1='290' x2='65.0' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='65.0' y='308' text-anchor='middle' font-size='10' fill='#64748b'>01-08</text>
+<text x='65.0' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2024</text>
+<line x1='172.7' y1='290' x2='172.7' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='172.7' y='308' text-anchor='middle' font-size='10' fill='#64748b'>04-08</text>
+<text x='172.7' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2024</text>
+<line x1='280.4' y1='290' x2='280.4' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='280.4' y='308' text-anchor='middle' font-size='10' fill='#64748b'>07-08</text>
+<text x='280.4' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2024</text>
+<line x1='388.1' y1='290' x2='388.1' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='388.1' y='308' text-anchor='middle' font-size='10' fill='#64748b'>10-07</text>
+<text x='388.1' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2024</text>
+<line x1='495.8' y1='290' x2='495.8' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='495.8' y='308' text-anchor='middle' font-size='10' fill='#64748b'>01-06</text>
+<text x='495.8' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2025</text>
+<line x1='603.5' y1='290' x2='603.5' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='603.5' y='308' text-anchor='middle' font-size='10' fill='#64748b'>04-07</text>
+<text x='603.5' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2025</text>
+<line x1='711.2' y1='290' x2='711.2' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='711.2' y='308' text-anchor='middle' font-size='10' fill='#64748b'>07-07</text>
+<text x='711.2' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2025</text>
+<line x1='818.9' y1='290' x2='818.9' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='818.9' y='308' text-anchor='middle' font-size='10' fill='#64748b'>10-06</text>
+<text x='818.9' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2025</text>
+<polyline points='65.0,170.8 73.3,186.3 81.6,180.1 89.9,201.8 98.1,183.2 106.4,173.9 114.7,208.1 123.0,211.2 131.3,208.1 139.6,195.6 147.8,183.2 156.1,186.3 164.4,201.8 172.7,211.2 181.0,180.1 189.3,170.8 197.5,167.7 205.8,214.3 214.1,186.3 222.4,164.6 230.7,167.7 239.0,173.9 247.3,211.2 255.5,170.8 263.8,173.9 272.1,211.2 280.4,177.0 288.7,192.5 297.0,170.8 305.2,183.2 313.5,192.5 321.8,201.8 330.1,189.4 338.4,208.1 346.7,208.1 355.0,204.9 363.2,183.2 371.5,189.4 379.8,183.2 388.1,161.5 396.4,189.4 404.7,211.2 412.9,201.8 421.2,195.6 429.5,170.8 437.8,183.2 446.1,217.4 454.4,183.2 462.6,201.8 470.9,201.8 479.2,186.3 487.5,204.9 495.8,177.0 504.1,192.5 512.4,173.9 520.6,208.1 528.9,189.4 537.2,198.7 545.5,208.1 553.8,186.3 562.1,195.6 570.3,186.3 578.6,186.3 586.9,183.2 595.2,192.5 603.5,192.5 611.8,204.9 620.0,201.8 628.3,204.9 636.6,149.1 644.9,114.9 653.2,164.6 661.5,142.9 669.8,121.1 678.0,136.7 686.3,124.2 694.6,133.6 702.9,161.5 711.2,164.6 719.5,164.6 727.7,136.7 736.0,130.4 744.3,167.7 752.6,152.2 760.9,133.6 769.2,170.8 777.5,149.1 785.7,170.8 794.0,146.0 802.3,133.6 810.6,146.0 818.9,118.0 827.2,158.4 835.4,167.7 843.7,164.6 852.0,161.5 860.3,164.6 868.6,167.7 876.9,127.3 885.1,155.3 893.4,149.1 901.7,158.4 910.0,133.6' fill='none' stroke='#0284c7' stroke-width='2.2'/>
+<circle cx='636.6' cy='149.1' r='6' fill='#10b981' stroke='#ffffff' stroke-width='2'><title>Week: 2025-05-05
+Cost: ₹2.17/tonne-km
+Verdict: Justified (Note N003)
+Matches note N003 dated 2025-05-05: Diesel prices rose nationwide starting this week, pushing up transportation costs across all routes by roughly 5-7%. The cost rise has a clear explanation. The observed +7.3% exceeds the stated range, so part of the rise remains unexplained.</title></circle>
+<text x='636.6' y='140.1' text-anchor='middle' font-size='9' font-weight='700' fill='#059669'>N003</text>
+<circle cx='644.9' cy='114.9' r='6' fill='#10b981' stroke='#ffffff' stroke-width='2'><title>Week: 2025-05-12
+Cost: ₹2.28/tonne-km
+Verdict: Justified (Note N003)
+Matches note N003 dated 2025-05-05: Diesel prices rose nationwide starting this week, pushing up transportation costs across all routes by roughly 5-7%. The cost rise has a clear explanation. The observed +11.6% exceeds the stated range, so part of the rise remains unexplained.</title></circle>
+<text x='644.9' y='105.9' text-anchor='middle' font-size='9' font-weight='700' fill='#059669'>N003</text>
+<circle cx='669.8' cy='121.1' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2025-06-02
+Cost: ₹2.26/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +7.7% vs this route's past average
+vs Peer: +9.4% vs similar-length routes this week
+No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</title></circle>
+<circle cx='669.8' cy='121.1' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<text x='65' y='20' font-size='14' font-weight='700' fill='#0f172a'>Mumbai-Delhi <tspan font-size='11' font-weight='500' fill='#64748b'>(Corridor Haul)</tspan></text>
+</svg>
+            </div>
+        </div>
+        
+        <div class="chart-card">
+            <div class="card-header">
+                <div>
+                    <h3 class="route-title">Mumbai-Pune</h3>
+                    <span class="route-type-badge">Corridor Haul</span>
+                </div>
+                <div class="route-badges">
+                    <span class="badge badge-unjustified">14 Unexplained</span>
+                    <span class="badge badge-justified">1 Justified</span>
+                </div>
+            </div>
+            <div class="chart-container">
+                <svg viewBox='0 0 950 340' class='route-chart' xmlns='http://www.w3.org/2000/svg'>
+<rect x='65' y='30' width='845' height='260' fill='#ffffff' stroke='#e2e8f0' stroke-width='1'/>
+<rect x='632.5' y='30' width='16.5' height='260' fill='rgba(59, 130, 246, 0.12)' stroke='rgba(59, 130, 246, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N003: Diesel prices rose nationwide starting this week, pushing up transportation costs across all routes by roughly 5-7%. (2025-05-05 to 2025-05-18)</title></rect>
+<text x='636.5' y='44' font-size='10' font-weight='600' fill='#475569'>N003</text>
+<rect x='135.5' y='30' width='12.0' height='260' fill='rgba(148, 163, 184, 0.12)' stroke='rgba(148, 163, 184, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N004: A new toll plaza was commissioned on a national highway stretch, but the affected routes are not part of this dataset. (2024-03-11 to 2024-03-17)</title></rect>
+<text x='139.5' y='44' font-size='10' font-weight='600' fill='#475569'>N004</text>
+<rect x='798.2' y='30' width='12.0' height='260' fill='rgba(148, 163, 184, 0.12)' stroke='rgba(148, 163, 184, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N006: A logistics industry report noted overall demand for freight capacity remained stable this quarter with no major disruptions reported. (2025-09-22 to 2025-09-28)</title></rect>
+<text x='802.2' y='44' font-size='10' font-weight='600' fill='#475569'>N006</text>
+<rect x='839.6' y='30' width='12.0' height='260' fill='rgba(148, 163, 184, 0.12)' stroke='rgba(148, 163, 184, 0.35)' stroke-width='1' stroke-dasharray='2,2'><title>N010: A new vehicle tracking mandate was introduced for commercial fleets; compliance costs were absorbed by transporters without a rate change. (2025-10-27 to 2025-11-02)</title></rect>
+<text x='843.6' y='44' font-size='10' font-weight='600' fill='#475569'>N010</text>
+<line x1='65' y1='290.0' x2='910' y2='290.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='294.0' text-anchor='end' font-size='11' fill='#64748b'>₹2.84</text>
+<line x1='65' y1='225.0' x2='910' y2='225.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='229.0' text-anchor='end' font-size='11' fill='#64748b'>₹3.39</text>
+<line x1='65' y1='160.0' x2='910' y2='160.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='164.0' text-anchor='end' font-size='11' fill='#64748b'>₹3.94</text>
+<line x1='65' y1='95.0' x2='910' y2='95.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='99.0' text-anchor='end' font-size='11' fill='#64748b'>₹4.48</text>
+<line x1='65' y1='30.0' x2='910' y2='30.0' stroke='#f1f5f9' stroke-width='1'/>
+<text x='57' y='34.0' text-anchor='end' font-size='11' fill='#64748b'>₹5.03</text>
+<line x1='65.0' y1='290' x2='65.0' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='65.0' y='308' text-anchor='middle' font-size='10' fill='#64748b'>01-08</text>
+<text x='65.0' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2024</text>
+<line x1='172.7' y1='290' x2='172.7' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='172.7' y='308' text-anchor='middle' font-size='10' fill='#64748b'>04-08</text>
+<text x='172.7' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2024</text>
+<line x1='280.4' y1='290' x2='280.4' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='280.4' y='308' text-anchor='middle' font-size='10' fill='#64748b'>07-08</text>
+<text x='280.4' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2024</text>
+<line x1='388.1' y1='290' x2='388.1' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='388.1' y='308' text-anchor='middle' font-size='10' fill='#64748b'>10-07</text>
+<text x='388.1' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2024</text>
+<line x1='495.8' y1='290' x2='495.8' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='495.8' y='308' text-anchor='middle' font-size='10' fill='#64748b'>01-06</text>
+<text x='495.8' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2025</text>
+<line x1='603.5' y1='290' x2='603.5' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='603.5' y='308' text-anchor='middle' font-size='10' fill='#64748b'>04-07</text>
+<text x='603.5' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2025</text>
+<line x1='711.2' y1='290' x2='711.2' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='711.2' y='308' text-anchor='middle' font-size='10' fill='#64748b'>07-07</text>
+<text x='711.2' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2025</text>
+<line x1='818.9' y1='290' x2='818.9' y2='295' stroke='#cbd5e1' stroke-width='1'/>
+<text x='818.9' y='308' text-anchor='middle' font-size='10' fill='#64748b'>10-06</text>
+<text x='818.9' y='320' text-anchor='middle' font-size='9' fill='#94a3b8'>2025</text>
+<polyline points='65.0,226.1 73.3,222.5 81.6,226.1 89.9,238.0 98.1,236.8 106.4,238.0 114.7,226.1 123.0,241.5 131.3,222.5 139.6,230.8 147.8,222.5 156.1,208.2 164.4,232.0 172.7,213.0 181.0,203.5 189.3,232.0 197.5,209.4 205.8,211.8 214.1,235.6 222.4,230.8 230.7,218.9 239.0,226.1 247.3,208.2 255.5,232.0 263.8,229.6 272.1,227.3 280.4,205.9 288.7,218.9 297.0,209.4 305.2,224.9 313.5,227.3 321.8,229.6 330.1,221.3 338.4,224.9 346.7,236.8 355.0,238.0 363.2,220.1 371.5,215.4 379.8,221.3 388.1,210.6 396.4,229.6 404.7,230.8 412.9,213.0 421.2,221.3 429.5,217.7 437.8,221.3 446.1,220.1 454.4,218.9 462.6,220.1 470.9,205.9 479.2,210.6 487.5,223.7 495.8,211.8 504.1,208.2 512.4,211.8 520.6,224.9 528.9,232.0 537.2,224.9 545.5,222.5 553.8,222.5 562.1,211.8 570.3,209.4 578.6,224.9 586.9,229.6 595.2,243.9 603.5,208.2 611.8,223.7 620.0,236.8 628.3,222.5 636.6,198.7 644.9,201.1 653.2,215.4 661.5,214.2 669.8,203.5 678.0,215.4 686.3,185.6 694.6,180.9 702.9,207.0 711.2,195.2 719.5,201.1 727.7,208.2 736.0,204.7 744.3,184.4 752.6,208.2 760.9,177.3 769.2,196.3 777.5,191.6 785.7,185.6 794.0,154.7 802.3,176.1 810.6,173.7 818.9,159.5 827.2,167.8 835.4,140.5 843.7,144.0 852.0,128.6 860.3,155.9 868.6,114.3 876.9,133.3 885.1,106.0 893.4,101.2 901.7,106.0 910.0,94.1' fill='none' stroke='#0284c7' stroke-width='2.2'/>
+<circle cx='156.1' cy='208.2' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2024-03-25
+Cost: ₹3.53/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +6.1% vs this route's past average
+vs Peer: +11.3% vs similar-length routes this week
+The closest note (N004, 2024-03-11) mentions that affected routes are not part of this dataset -- it does not describe a reason for a cost rise on this route. No genuine justification found; flagged for review.</title></circle>
+<circle cx='156.1' cy='208.2' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<circle cx='636.6' cy='198.7' r='6' fill='#10b981' stroke='#ffffff' stroke-width='2'><title>Week: 2025-05-05
+Cost: ₹3.61/tonne-km
+Verdict: Justified (Note N003)
+Matches note N003 dated 2025-05-05: Diesel prices rose nationwide starting this week, pushing up transportation costs across all routes by roughly 5-7%. The cost rise has a clear explanation.</title></circle>
+<text x='636.6' y='189.7' text-anchor='middle' font-size='9' font-weight='700' fill='#059669'>N003</text>
+<circle cx='686.3' cy='185.6' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2025-06-16
+Cost: ₹3.72/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +6.6% vs this route's past average
+vs Peer: +13.0% vs similar-length routes this week
+No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</title></circle>
+<circle cx='686.3' cy='185.6' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<circle cx='694.6' cy='180.9' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2025-06-23
+Cost: ₹3.76/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +6.2% vs this route's past average
+vs Peer: +20.6% vs similar-length routes this week
+No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</title></circle>
+<circle cx='694.6' cy='180.9' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<circle cx='794.0' cy='154.7' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2025-09-15
+Cost: ₹3.98/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +9.2% vs this route's past average
+vs Peer: +23.6% vs similar-length routes this week
+The closest note (N006, 2025-09-22) mentions stable demand with no major disruptions -- it does not describe a reason for a cost rise on this route. No genuine justification found; flagged for review.</title></circle>
+<circle cx='794.0' cy='154.7' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<circle cx='818.9' cy='159.5' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2025-10-06
+Cost: ₹3.94/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +5.4% vs this route's past average
+vs Peer: +22.9% vs similar-length routes this week
+The closest note (N006, 2025-09-22) mentions stable demand with no major disruptions -- it does not describe a reason for a cost rise on this route. No genuine justification found; flagged for review.</title></circle>
+<circle cx='818.9' cy='159.5' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<circle cx='835.4' cy='140.5' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2025-10-20
+Cost: ₹4.10/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +7.7% vs this route's past average
+vs Peer: +24.8% vs similar-length routes this week
+The closest note (N010, 2025-10-27) mentions compliance costs were absorbed without a rate change -- it does not describe a reason for a cost rise on this route. No genuine justification found; flagged for review.</title></circle>
+<circle cx='835.4' cy='140.5' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<circle cx='843.7' cy='144.0' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2025-10-27
+Cost: ₹4.07/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +5.5% vs this route's past average
+vs Peer: +28.3% vs similar-length routes this week
+The closest note (N010, 2025-10-27) mentions compliance costs were absorbed without a rate change -- it does not describe a reason for a cost rise on this route. No genuine justification found; flagged for review.</title></circle>
+<circle cx='843.7' cy='144.0' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<circle cx='852.0' cy='128.6' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2025-11-03
+Cost: ₹4.20/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +7.4% vs this route's past average
+vs Peer: +24.1% vs similar-length routes this week
+The closest note (N010, 2025-10-27) mentions compliance costs were absorbed without a rate change -- it does not describe a reason for a cost rise on this route. No genuine justification found; flagged for review.</title></circle>
+<circle cx='852.0' cy='128.6' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<circle cx='868.6' cy='114.3' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2025-11-17
+Cost: ₹4.32/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +8.9% vs this route's past average
+vs Peer: +31.6% vs similar-length routes this week
+The closest note (N010, 2025-10-27) mentions compliance costs were absorbed without a rate change -- it does not describe a reason for a cost rise on this route. No genuine justification found; flagged for review.</title></circle>
+<circle cx='868.6' cy='114.3' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<circle cx='876.9' cy='133.3' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2025-11-24
+Cost: ₹4.16/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +3.0% vs this route's past average
+vs Peer: +23.0% vs similar-length routes this week
+No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</title></circle>
+<circle cx='876.9' cy='133.3' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<circle cx='885.1' cy='106.0' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2025-12-01
+Cost: ₹4.39/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +7.7% vs this route's past average
+vs Peer: +37.4% vs similar-length routes this week
+No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</title></circle>
+<circle cx='885.1' cy='106.0' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<circle cx='893.4' cy='101.2' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2025-12-08
+Cost: ₹4.43/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +7.2% vs this route's past average
+vs Peer: +38.8% vs similar-length routes this week
+No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</title></circle>
+<circle cx='893.4' cy='101.2' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<circle cx='901.7' cy='106.0' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2025-12-15
+Cost: ₹4.39/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +4.4% vs this route's past average
+vs Peer: +35.5% vs similar-length routes this week
+No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</title></circle>
+<circle cx='901.7' cy='106.0' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<circle cx='910.0' cy='94.1' r='6' fill='#ef4444' stroke='#ffffff' stroke-width='2'><title>Week: 2025-12-22
+Cost: ₹4.49/tonne-km
+Verdict: Unexplained Spike (Yes)
+vs Own: +5.7% vs this route's past average
+vs Peer: +38.9% vs similar-length routes this week
+No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</title></circle>
+<circle cx='910.0' cy='94.1' r='10' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-dasharray='2,2'/>
+<text x='65' y='20' font-size='14' font-weight='700' fill='#0f172a'>Mumbai-Pune <tspan font-size='11' font-weight='500' fill='#64748b'>(Corridor Haul)</tspan></text>
+</svg>
+            </div>
+        </div>
+        
+        </section>
+
+        <section class="table-section">
+            <h2>Audited Anomalies Register (38 Weeks)</h2>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Route</th>
+                            <th>Week Of</th>
+                            <th style="text-align: right;">Unit Cost</th>
+                            <th style="text-align: right;">vs Own Baseline</th>
+                            <th style="text-align: right;">vs Peer Baseline</th>
+                            <th>Verdict</th>
+                            <th style="text-align: center;">Cited Note</th>
+                            <th style="text-align: center;">Shipments</th>
+                            <th>Explanation / Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+        <tr>
+            <td style="font-weight: 600;">Delhi-Chennai</td>
+            <td><code>2024-01-08</code></td>
+            <td style="text-align: right; font-weight: 600;">₹2.10</td>
+            <td style="text-align: right;">+7.2% vs this route's past average</td>
+            <td style="text-align: right;">-0.2% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#0f766e; font-weight:600;'>4 <span style='font-size:11px; color:#115e59;'>(High)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Delhi-Chennai</td>
+            <td><code>2024-02-05</code></td>
+            <td style="text-align: right; font-weight: 600;">₹2.22</td>
+            <td style="text-align: right;">+8.5% vs this route's past average</td>
+            <td style="text-align: right;">+7.8% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#b45309; font-weight:600;'>3 <span style='font-size:11px; color:#92400e;'>(Thin)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Delhi-Chennai</td>
+            <td><code>2024-03-18</code></td>
+            <td style="text-align: right; font-weight: 600;">₹2.21</td>
+            <td style="text-align: right;">+6.6% vs this route's past average</td>
+            <td style="text-align: right;">+7.3% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#0f766e; font-weight:600;'>4 <span style='font-size:11px; color:#115e59;'>(High)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">The closest note (N004, 2024-03-11) mentions that affected routes are not part of this dataset -- it does not describe a reason for a cost rise on this route. No genuine justification found; flagged for review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Mumbai-Pune</td>
+            <td><code>2024-03-25</code></td>
+            <td style="text-align: right; font-weight: 600;">₹3.53</td>
+            <td style="text-align: right;">+6.1% vs this route's past average</td>
+            <td style="text-align: right;">+11.3% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#b45309; font-weight:600;'>3 <span style='font-size:11px; color:#92400e;'>(Thin)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">The closest note (N004, 2024-03-11) mentions that affected routes are not part of this dataset -- it does not describe a reason for a cost rise on this route. No genuine justification found; flagged for review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Ahmedabad-Mumbai</td>
+            <td><code>2024-10-28</code></td>
+            <td style="text-align: right; font-weight: 600;">₹2.67</td>
+            <td style="text-align: right;">+6.4% vs this route's past average</td>
+            <td style="text-align: right;">+4.3% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#0f766e; font-weight:600;'>4 <span style='font-size:11px; color:#115e59;'>(High)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Delhi-Jaipur</td>
+            <td><code>2024-11-11</code></td>
+            <td style="text-align: right; font-weight: 600;">₹4.17</td>
+            <td style="text-align: right;">+35.5% vs this route's past average</td>
+            <td style="text-align: right;">+21.0% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#0f766e; font-weight:600;'>4 <span style='font-size:11px; color:#115e59;'>(High)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Delhi-Jaipur</td>
+            <td><code>2024-11-18</code></td>
+            <td style="text-align: right; font-weight: 600;">₹4.09</td>
+            <td style="text-align: right;">+27.6% vs this route's past average</td>
+            <td style="text-align: right;">+19.7% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#b45309; font-weight:600;'>3 <span style='font-size:11px; color:#92400e;'>(Thin)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Ahmedabad-Mumbai</td>
+            <td><code>2025-01-20</code></td>
+            <td style="text-align: right; font-weight: 600;">₹3.29</td>
+            <td style="text-align: right;">+29.5% vs this route's past average</td>
+            <td style="text-align: right;">+22.5% vs similar-length routes this week</td>
+            <td><span class="badge badge-justified">Justified</span></td>
+            <td style="text-align: center;"><strong>N002</strong></td>
+            <td style="text-align: center;"><span style='color:#0f766e; font-weight:600;'>5 <span style='font-size:11px; color:#115e59;'>(High)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">Matches note N002 dated 2025-01-20: A regional festival week saw a temporary surcharge applied by transporters on the Ahmedabad-Mumbai corridor due to high demand and limited truck availability. The cost rise has a clear explanation.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Delhi-Chennai</td>
+            <td><code>2025-01-27</code></td>
+            <td style="text-align: right; font-weight: 600;">₹2.18</td>
+            <td style="text-align: right;">+6.3% vs this route's past average</td>
+            <td style="text-align: right;">+10.0% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#0f766e; font-weight:600;'>5 <span style='font-size:11px; color:#115e59;'>(High)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Delhi-Chennai</td>
+            <td><code>2025-02-03</code></td>
+            <td style="text-align: right; font-weight: 600;">₹2.21</td>
+            <td style="text-align: right;">+6.6% vs this route's past average</td>
+            <td style="text-align: right;">+8.7% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#0f766e; font-weight:600;'>4 <span style='font-size:11px; color:#115e59;'>(High)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Delhi-Chennai</td>
+            <td><code>2025-02-17</code></td>
+            <td style="text-align: right; font-weight: 600;">₹2.22</td>
+            <td style="text-align: right;">+6.5% vs this route's past average</td>
+            <td style="text-align: right;">+11.9% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#0f766e; font-weight:600;'>5 <span style='font-size:11px; color:#115e59;'>(High)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Chennai-Bangalore</td>
+            <td><code>2025-02-24</code></td>
+            <td style="text-align: right; font-weight: 600;">₹3.58</td>
+            <td style="text-align: right;">+31.5% vs this route's past average</td>
+            <td style="text-align: right;">+38.7% vs similar-length routes this week</td>
+            <td><span class="badge badge-justified">Justified</span></td>
+            <td style="text-align: center;"><strong>N001</strong></td>
+            <td style="text-align: center;"><span style='color:#0f766e; font-weight:600;'>5 <span style='font-size:11px; color:#115e59;'>(High)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">Matches note N001 dated 2025-02-24: Heavy flooding on the Chennai-Bangalore highway disrupted normal truck movement from Feb 24 to Mar 8, forcing longer detours and higher trip costs. Roads were passable again by Mar 9. The cost rise has a clear explanation.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Chennai-Bangalore</td>
+            <td><code>2025-03-03</code></td>
+            <td style="text-align: right; font-weight: 600;">₹3.48</td>
+            <td style="text-align: right;">+22.8% vs this route's past average</td>
+            <td style="text-align: right;">+32.0% vs similar-length routes this week</td>
+            <td><span class="badge badge-justified">Justified</span></td>
+            <td style="text-align: center;"><strong>N001</strong></td>
+            <td style="text-align: center;"><span style='color:#0f766e; font-weight:600;'>5 <span style='font-size:11px; color:#115e59;'>(High)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">Matches note N001 dated 2025-02-24: Heavy flooding on the Chennai-Bangalore highway disrupted normal truck movement from Feb 24 to Mar 8, forcing longer detours and higher trip costs. Roads were passable again by Mar 9. The cost rise has a clear explanation.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Chennai-Bangalore</td>
+            <td><code>2025-03-10</code></td>
+            <td style="text-align: right; font-weight: 600;">₹3.57</td>
+            <td style="text-align: right;">+22.1% vs this route's past average</td>
+            <td style="text-align: right;">+33.8% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#0f766e; font-weight:600;'>5 <span style='font-size:11px; color:#115e59;'>(High)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">Note N001's disruption window ended on Mar 8; week of 2025-03-10 is outside the covered window. Cost rise looks unexplained and worth a human review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Chennai-Bangalore</td>
+            <td><code>2025-03-17</code></td>
+            <td style="text-align: right; font-weight: 600;">₹3.47</td>
+            <td style="text-align: right;">+13.7% vs this route's past average</td>
+            <td style="text-align: right;">+33.5% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#0f766e; font-weight:600;'>5 <span style='font-size:11px; color:#115e59;'>(High)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">The closest note (N009, 2025-03-17) mentions route returned to normal conditions after repairs were completed -- it does not describe a reason for a cost rise on this route. No genuine justification found; flagged for review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Delhi-Chennai</td>
+            <td><code>2025-05-05</code></td>
+            <td style="text-align: right; font-weight: 600;">₹2.20</td>
+            <td style="text-align: right;">+6.2% vs this route's past average</td>
+            <td style="text-align: right;">+1.2% vs similar-length routes this week</td>
+            <td><span class="badge badge-justified">Justified</span></td>
+            <td style="text-align: center;"><strong>N003</strong></td>
+            <td style="text-align: center;"><span style='color:#0f766e; font-weight:600;'>4 <span style='font-size:11px; color:#115e59;'>(High)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">Matches note N003 dated 2025-05-05: Diesel prices rose nationwide starting this week, pushing up transportation costs across all routes by roughly 5-7%. The cost rise has a clear explanation.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Delhi-Jaipur</td>
+            <td><code>2025-05-05</code></td>
+            <td style="text-align: right; font-weight: 600;">₹3.32</td>
+            <td style="text-align: right;">+7.5% vs this route's past average</td>
+            <td style="text-align: right;">-8.1% vs similar-length routes this week</td>
+            <td><span class="badge badge-justified">Justified</span></td>
+            <td style="text-align: center;"><strong>N003</strong></td>
+            <td style="text-align: center;"><span style='color:#b45309; font-weight:600;'>3 <span style='font-size:11px; color:#92400e;'>(Thin)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">Matches note N003 dated 2025-05-05: Diesel prices rose nationwide starting this week, pushing up transportation costs across all routes by roughly 5-7%. The cost rise has a clear explanation. The observed +7.5% exceeds the stated range, so part of the rise remains unexplained.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Mumbai-Delhi</td>
+            <td><code>2025-05-05</code></td>
+            <td style="text-align: right; font-weight: 600;">₹2.17</td>
+            <td style="text-align: right;">+7.3% vs this route's past average</td>
+            <td style="text-align: right;">-1.2% vs similar-length routes this week</td>
+            <td><span class="badge badge-justified">Justified</span></td>
+            <td style="text-align: center;"><strong>N003</strong></td>
+            <td style="text-align: center;"><span style='color:#b45309; font-weight:600;'>3 <span style='font-size:11px; color:#92400e;'>(Thin)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">Matches note N003 dated 2025-05-05: Diesel prices rose nationwide starting this week, pushing up transportation costs across all routes by roughly 5-7%. The cost rise has a clear explanation. The observed +7.3% exceeds the stated range, so part of the rise remains unexplained.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Mumbai-Pune</td>
+            <td><code>2025-05-05</code></td>
+            <td style="text-align: right; font-weight: 600;">₹3.61</td>
+            <td style="text-align: right;">+6.6% vs this route's past average</td>
+            <td style="text-align: right;">+8.8% vs similar-length routes this week</td>
+            <td><span class="badge badge-justified">Justified</span></td>
+            <td style="text-align: center;"><strong>N003</strong></td>
+            <td style="text-align: center;"><span style='color:#0f766e; font-weight:600;'>4 <span style='font-size:11px; color:#115e59;'>(High)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">Matches note N003 dated 2025-05-05: Diesel prices rose nationwide starting this week, pushing up transportation costs across all routes by roughly 5-7%. The cost rise has a clear explanation.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Mumbai-Delhi</td>
+            <td><code>2025-05-12</code></td>
+            <td style="text-align: right; font-weight: 600;">₹2.28</td>
+            <td style="text-align: right;">+11.6% vs this route's past average</td>
+            <td style="text-align: right;">+6.7% vs similar-length routes this week</td>
+            <td><span class="badge badge-justified">Justified</span></td>
+            <td style="text-align: center;"><strong>N003</strong></td>
+            <td style="text-align: center;"><span style='color:#b45309; font-weight:600;'>3 <span style='font-size:11px; color:#92400e;'>(Thin)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">Matches note N003 dated 2025-05-05: Diesel prices rose nationwide starting this week, pushing up transportation costs across all routes by roughly 5-7%. The cost rise has a clear explanation. The observed +11.6% exceeds the stated range, so part of the rise remains unexplained.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Delhi-Jaipur</td>
+            <td><code>2025-05-19</code></td>
+            <td style="text-align: right; font-weight: 600;">₹3.32</td>
+            <td style="text-align: right;">+6.4% vs this route's past average</td>
+            <td style="text-align: right;">-4.3% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#0f766e; font-weight:600;'>5 <span style='font-size:11px; color:#115e59;'>(High)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">Note N003 (2025-05-05) falls just outside the assumed 2-week window; the week of 2025-05-19 is not covered. Cost rise looks unexplained and worth a human review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Kolkata-Bhubaneswar</td>
+            <td><code>2025-05-26</code></td>
+            <td style="text-align: right; font-weight: 600;">₹2.84</td>
+            <td style="text-align: right;">+7.5% vs this route's past average</td>
+            <td style="text-align: right;">+5.0% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#b45309; font-weight:600;'>3 <span style='font-size:11px; color:#92400e;'>(Thin)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">The closest note (N008, 2025-06-09) mentions freight movement remained normal with no disruptions -- it does not describe a reason for a cost rise on this route. No genuine justification found; flagged for review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Mumbai-Delhi</td>
+            <td><code>2025-06-02</code></td>
+            <td style="text-align: right; font-weight: 600;">₹2.26</td>
+            <td style="text-align: right;">+7.7% vs this route's past average</td>
+            <td style="text-align: right;">+9.4% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#0f766e; font-weight:600;'>4 <span style='font-size:11px; color:#115e59;'>(High)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Ahmedabad-Mumbai</td>
+            <td><code>2025-06-16</code></td>
+            <td style="text-align: right; font-weight: 600;">₹2.81</td>
+            <td style="text-align: right;">+6.7% vs this route's past average</td>
+            <td style="text-align: right;">+0.1% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#0f766e; font-weight:600;'>4 <span style='font-size:11px; color:#115e59;'>(High)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Mumbai-Pune</td>
+            <td><code>2025-06-16</code></td>
+            <td style="text-align: right; font-weight: 600;">₹3.72</td>
+            <td style="text-align: right;">+6.6% vs this route's past average</td>
+            <td style="text-align: right;">+13.0% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#0f766e; font-weight:600;'>4 <span style='font-size:11px; color:#115e59;'>(High)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Mumbai-Pune</td>
+            <td><code>2025-06-23</code></td>
+            <td style="text-align: right; font-weight: 600;">₹3.76</td>
+            <td style="text-align: right;">+6.2% vs this route's past average</td>
+            <td style="text-align: right;">+20.6% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#b45309; font-weight:600;'>3 <span style='font-size:11px; color:#92400e;'>(Thin)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Mumbai-Pune</td>
+            <td><code>2025-09-15</code></td>
+            <td style="text-align: right; font-weight: 600;">₹3.98</td>
+            <td style="text-align: right;">+9.2% vs this route's past average</td>
+            <td style="text-align: right;">+23.6% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#0f766e; font-weight:600;'>4 <span style='font-size:11px; color:#115e59;'>(High)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">The closest note (N006, 2025-09-22) mentions stable demand with no major disruptions -- it does not describe a reason for a cost rise on this route. No genuine justification found; flagged for review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Mumbai-Pune</td>
+            <td><code>2025-10-06</code></td>
+            <td style="text-align: right; font-weight: 600;">₹3.94</td>
+            <td style="text-align: right;">+5.4% vs this route's past average</td>
+            <td style="text-align: right;">+22.9% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#0f766e; font-weight:600;'>5 <span style='font-size:11px; color:#115e59;'>(High)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">The closest note (N006, 2025-09-22) mentions stable demand with no major disruptions -- it does not describe a reason for a cost rise on this route. No genuine justification found; flagged for review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Mumbai-Pune</td>
+            <td><code>2025-10-20</code></td>
+            <td style="text-align: right; font-weight: 600;">₹4.10</td>
+            <td style="text-align: right;">+7.7% vs this route's past average</td>
+            <td style="text-align: right;">+24.8% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#0f766e; font-weight:600;'>4 <span style='font-size:11px; color:#115e59;'>(High)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">The closest note (N010, 2025-10-27) mentions compliance costs were absorbed without a rate change -- it does not describe a reason for a cost rise on this route. No genuine justification found; flagged for review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Mumbai-Pune</td>
+            <td><code>2025-10-27</code></td>
+            <td style="text-align: right; font-weight: 600;">₹4.07</td>
+            <td style="text-align: right;">+5.5% vs this route's past average</td>
+            <td style="text-align: right;">+28.3% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#b45309; font-weight:600;'>3 <span style='font-size:11px; color:#92400e;'>(Thin)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">The closest note (N010, 2025-10-27) mentions compliance costs were absorbed without a rate change -- it does not describe a reason for a cost rise on this route. No genuine justification found; flagged for review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Mumbai-Pune</td>
+            <td><code>2025-11-03</code></td>
+            <td style="text-align: right; font-weight: 600;">₹4.20</td>
+            <td style="text-align: right;">+7.4% vs this route's past average</td>
+            <td style="text-align: right;">+24.1% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#0f766e; font-weight:600;'>5 <span style='font-size:11px; color:#115e59;'>(High)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">The closest note (N010, 2025-10-27) mentions compliance costs were absorbed without a rate change -- it does not describe a reason for a cost rise on this route. No genuine justification found; flagged for review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Delhi-Chennai</td>
+            <td><code>2025-11-10</code></td>
+            <td style="text-align: right; font-weight: 600;">₹2.20</td>
+            <td style="text-align: right;">+6.1% vs this route's past average</td>
+            <td style="text-align: right;">+3.9% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#b45309; font-weight:600;'>3 <span style='font-size:11px; color:#92400e;'>(Thin)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">The closest note (N010, 2025-10-27) mentions compliance costs were absorbed without a rate change -- it does not describe a reason for a cost rise on this route. No genuine justification found; flagged for review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Mumbai-Pune</td>
+            <td><code>2025-11-17</code></td>
+            <td style="text-align: right; font-weight: 600;">₹4.32</td>
+            <td style="text-align: right;">+8.9% vs this route's past average</td>
+            <td style="text-align: right;">+31.6% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#b45309; font-weight:600;'>3 <span style='font-size:11px; color:#92400e;'>(Thin)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">The closest note (N010, 2025-10-27) mentions compliance costs were absorbed without a rate change -- it does not describe a reason for a cost rise on this route. No genuine justification found; flagged for review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Mumbai-Pune</td>
+            <td><code>2025-11-24</code></td>
+            <td style="text-align: right; font-weight: 600;">₹4.16</td>
+            <td style="text-align: right;">+3.0% vs this route's past average</td>
+            <td style="text-align: right;">+23.0% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#b45309; font-weight:600;'>3 <span style='font-size:11px; color:#92400e;'>(Thin)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Mumbai-Pune</td>
+            <td><code>2025-12-01</code></td>
+            <td style="text-align: right; font-weight: 600;">₹4.39</td>
+            <td style="text-align: right;">+7.7% vs this route's past average</td>
+            <td style="text-align: right;">+37.4% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#0f766e; font-weight:600;'>5 <span style='font-size:11px; color:#115e59;'>(High)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Mumbai-Pune</td>
+            <td><code>2025-12-08</code></td>
+            <td style="text-align: right; font-weight: 600;">₹4.43</td>
+            <td style="text-align: right;">+7.2% vs this route's past average</td>
+            <td style="text-align: right;">+38.8% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#b45309; font-weight:600;'>3 <span style='font-size:11px; color:#92400e;'>(Thin)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Mumbai-Pune</td>
+            <td><code>2025-12-15</code></td>
+            <td style="text-align: right; font-weight: 600;">₹4.39</td>
+            <td style="text-align: right;">+4.4% vs this route's past average</td>
+            <td style="text-align: right;">+35.5% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#b45309; font-weight:600;'>3 <span style='font-size:11px; color:#92400e;'>(Thin)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</td>
+        </tr>
+        
+        <tr>
+            <td style="font-weight: 600;">Mumbai-Pune</td>
+            <td><code>2025-12-22</code></td>
+            <td style="text-align: right; font-weight: 600;">₹4.49</td>
+            <td style="text-align: right;">+5.7% vs this route's past average</td>
+            <td style="text-align: right;">+38.9% vs similar-length routes this week</td>
+            <td><span class="badge badge-unjustified">Yes</span></td>
+            <td style="text-align: center;"><span style='color:#94a3b8;'>—</span></td>
+            <td style="text-align: center;"><span style='color:#b45309; font-weight:600;'>3 <span style='font-size:11px; color:#92400e;'>(Thin)</span></span></td>
+            <td style="font-size: 13px; color: #334155;">No matching note found for this route or date range. Cost rise looks unexplained and worth a human review.</td>
+        </tr>
+        
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <footer class="footer">
+            <p>Generated by Freight Tiger Shipping Cost Anomaly Detection Pipeline &bull; 100% Deterministic &bull; Self-Contained Offline Report</p>
+        </footer>
+    </div>
+</body>
+</html>

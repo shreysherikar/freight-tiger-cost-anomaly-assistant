@@ -1,0 +1,38 @@
+{
+  "manifest_version": "1.0.0",
+  "timestamp_utc": "2026-10-15T09:30:13.098388+00:00",
+  "code_version": "1.2.0",
+  "data_hashes": {
+    "shipment_records_sha256": "1a2b4d66c4dc694111ba37b966486b5b0650df9ec8687402f3434117b140f4b6",
+    "context_notes_sha256": "875c57a896ac3dfac0f712f8865b287bb5d2bd5423d26e798297b74dce87e6dc"
+  },
+  "config": {
+    "threshold_own_pct": 6.0,
+    "threshold_peer_pct": 20.0,
+    "rolling_history_weeks": 8,
+    "fuel_surcharge_window_weeks": 2,
+    "output_scope": "flagged_only",
+    "use_llm": false
+  },
+  "row_counts": {
+    "shipments_processed": 2940,
+    "total_route_weeks_evaluated": 721,
+    "anomalies_flagged": 38
+  },
+  "verdict_counts": {
+    "justified_count": 8,
+    "unjustified_count": 30
+  },
+  "output_file": {
+    "path": "output.csv",
+    "sha256": "6e4a9cf84801e04ab4ee4dfb5cfdf80dfcd2aa49088cd28c39c12e015412900c"
+  },
+  "token_cost_log": {
+    "use_llm": false,
+    "model_name": "template",
+    "llm_calls": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost_usd": 0.0
+  }
+}

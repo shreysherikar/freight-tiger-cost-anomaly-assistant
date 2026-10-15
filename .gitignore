@@ -1,0 +1,11 @@
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+.cache/
+fresh_clone_test/
+submission.zip
+cost_logs/
+llm_ledger.jsonl
+veto_log.json
+AI Intern Case Study/
